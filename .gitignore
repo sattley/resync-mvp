@@ -1,0 +1,11 @@
+# Node.js
+frontend/node_modules
+frontend/dist
+
+# Python
+backend/__pycache__/
+backend/env/
+backend/db.sqlite3
+
+# General
+.env
