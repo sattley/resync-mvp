@@ -6,11 +6,11 @@ ReSync Interview Challenge
    ```cd backend```
 <br>
 1. **Create and activate a virtual environment:**
-   ```python -m venv env```
+   ```python3 -m venv env```
    ```source env/bin/activate```
 <br>
 1. **Install dependencies:**
-   ```pip install -r requirements.txt```
+   ```python3 -m pip install -r requirements.txt```
 <br>
 1. **Run the FastAPI server:**
    ```uvicorn main:app --reload```
