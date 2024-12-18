@@ -1,14 +1,18 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  const navigate = useNavigate(); // Initialize useNavigate
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
+        localStorage.removeItem("access_token"); // Clear any old token
       const response = await fetch("http://127.0.0.1:8000/login", {
         method: "POST",
         headers: {
@@ -24,7 +28,7 @@ const Login = () => {
       const data = await response.json();
       localStorage.setItem("access_token", data.access_token);
       setError("");
-      alert("Login successful!");
+      window.location.href = "/dashboard"; // Redirect to dashboard
     } catch (err) {
       setError((err as Error).message);
     }

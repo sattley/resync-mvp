@@ -1,11 +1,15 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from database import engine, Base, SessionLocal
 import models # Import data models so they are registered
 from sqlalchemy.orm import Session
-from auth import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from auth import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from pydantic import BaseModel
 from datetime import timedelta
+
+# --- 1. App Initialization and Middleware ---
 
 app = FastAPI()
 
@@ -20,6 +24,9 @@ app.add_middleware(
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+
+# --- 2. Helpers/Dependencies ---
+
 # Dependency to get a DB session
 def get_db():
     db = SessionLocal()
@@ -27,6 +34,26 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# OAuth2 scheme for token authentication
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Helper to get the current user from JWT
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+# --- 3. Pydantic Models ---
 
 # Pydantic models
 class UserCreate(BaseModel):
@@ -36,6 +63,9 @@ class UserCreate(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+# --- 4. Routes ---
 
 # Root endpoint
 @app.get("/")
@@ -67,3 +97,9 @@ def login(user: LoginRequest, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": db_user.username}, expires_delta=access_token_expires)
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+# Protected Route: Fetch User's Compounds
+@app.get("/compounds")
+def get_user_compounds(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    compounds = db.query(models.Compound).filter(models.Compound.owner_id == current_user.id).all()
+    return compounds
