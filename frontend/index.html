@@ -4,7 +4,19 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <title>ReSync MVP</title>
+    <!-- RDKit.js Library -->
+    <script src="/rdkit/RDKit_minimal.js"></script>
+    <script>
+      window.initRDKitModule()
+        .then((RDKit) => {
+          console.log("RDKit initialized.");
+          window.RDKit = RDKit; // Attach to window for global access
+        })
+        .catch((err) => {
+          console.error("Failed to initialize RDKit:", err);
+        });
+    </script>
   </head>
   <body>
     <div id="root"></div>

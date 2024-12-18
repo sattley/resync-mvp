@@ -1,7 +1,9 @@
-# resync-mvp
+# ReSync MVP
 ReSync Interview Challenge
+<br>
+<br>
 
-### Backend Setup
+# Backend Setup
 1. **Navigate to the backend directory**:
    ```cd backend```
 <br>
@@ -22,5 +24,14 @@ ReSync Interview Challenge
 1. **View API Docs:**
    To view FastAPI auto generated API docs, go to:
    <http://localhost:8000/docs>
+<br>
+<br>
+
+# Test Data
+### Users
+
+    Username: newuser
+    Password: P@ssword123!UniqueTest
+
 
 
