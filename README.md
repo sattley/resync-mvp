@@ -6,16 +6,17 @@ ReSync Interview Challenge
 # Backend Setup
 1. **Navigate to the backend directory**:
    ```cd backend```
-<br>
-1. **Create and activate a virtual environment:**
+
+1. **Create and activate a virtual environment**:
    ```python3 -m venv env```
    ```source env/bin/activate```
-<br>
-1. **Install dependencies:**
+
+1. **Install dependencies**:
    ```python3 -m pip install -r requirements.txt```
-<br>
-1. **Run the FastAPI server:**
+
+1. **Run the FastAPI server**:
    ```uvicorn main:app --reload```
+
 <br>
 <br>
 
@@ -25,13 +26,13 @@ ReSync Interview Challenge
 
 1. **Navigate to the frontend directory**:
    ```cd frontend```
-<br>
-1. **Install dependencies:**
+
+1. **Install dependencies**:
    ```npm install```
-<br>
-1. **Start the Vite development server:**
+
+1. **Start the Vite development server**:
    ```npm run dev```
-<br>
+
 1. **View the app in a browser :**
    Open your browser and go to:
    <http://localhost:5173/>
