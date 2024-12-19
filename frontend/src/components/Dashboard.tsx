@@ -174,7 +174,9 @@ const Dashboard = () => {
       setSelectedUser(null);
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message.includes("User already has this compound")) {
+        if (error.message.includes("not authorized to share")) {
+          showToast("You cannot share this compound back to its original owner.", "error");
+        } else if (error.message.includes("User already has this compound")) {
           showToast("This user already has this compound.", "error");
         } else {
           showToast("Failed to share the compound. Please try again.", "error");

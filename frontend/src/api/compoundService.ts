@@ -88,25 +88,32 @@ export const fetchUsers = async (token: string) => {
   }
 };
 
-export const shareCompound = async (compoundId: number, userId: number, token: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/compounds/${compoundId}/share`, {
+export const shareCompound = async (
+  compoundId: number,
+  userId: number,
+  token: string
+) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/compounds/${compoundId}/share`,
+      {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ user_id: userId }),
-      });
-  
-      if (!response.ok) {
-        throw new Error("Failed to share compound");
       }
-  
-      return await response.json(); // Return response if needed
-    } catch (error) {
-      console.error("Error sharing compound:", error);
-      throw error;
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Failed to share compound");
     }
-  };
-  
+
+    return await response.json(); // Return response if needed
+  } catch (error) {
+    console.error("Error sharing compound:", error);
+    throw error;
+  }
+};

@@ -124,31 +124,33 @@ def get_user_compounds(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    compounds = (
+    # Fetch compounds owned by the current user
+    owned_compounds = (
         db.query(models.Compound)
-        .filter(
-            (models.Compound.owner_id == current_user.id) |
-            (models.Compound.shared_with.any(id=current_user.id))
-        )
+        .filter(models.Compound.owner_id == current_user.id)
         .all()
     )
 
-    # Add sharedBy field for shared compounds
-    response = []
-    for compound in compounds:
-        shared_by = None
-        if compound.owner_id is None:  # If the compound has no owner
-            shared_by_user = db.query(models.User).filter(models.User.id == compound.owner_id).first()
-            shared_by = shared_by_user.username if shared_by_user else None
-        response.append(
-            {
-                "id": compound.id,
-                "name": compound.name,
-                "smiles_string": compound.smiles_string,
-                "sharedBy": shared_by,
-            }
+    # Fetch compounds shared with the current user
+    shared_compounds = (
+        db.query(models.Compound)
+        .join(models.shared_compounds, models.Compound.id == models.shared_compounds.c.compound_id)
+        .filter(models.shared_compounds.c.user_id == current_user.id)
+        .all()
+    )
+
+    # Combine results
+    compounds = owned_compounds + shared_compounds
+
+    return [
+        CompoundResponse(
+            id=compound.id,
+            name=compound.name,
+            smiles_string=compound.smiles_string,
         )
-    return response
+        for compound in compounds
+    ]
+
 
 
 # Save a Compound
@@ -189,27 +191,22 @@ def delete_compound(
     db: Session = Depends(get_db),
 ):
     # Fetch the compound to ensure it exists and belongs to the current user
-    compound = db.query(models.Compound).filter(models.Compound.id == compound_id).first()
+    compound = (
+        db.query(models.Compound)
+        .filter(models.Compound.id == compound_id, models.Compound.owner_id == current_user.id)
+        .first()
+    )
     if not compound:
-        raise HTTPException(status_code=404, detail="Compound not found.")
+        raise HTTPException(status_code=404, detail="Compound not found or not authorized to delete.")
 
-    # Check if the user is the owner
-    if compound.owner_id == current_user.id:
-        # Check if the compound is shared
-        if compound.shared_with:
-            # Nullify the owner_id but keep the compound
-            compound.owner_id = None
-        else:
-            # If not shared, delete the compound
-            db.delete(compound)
-    else:
-        # If the user is not the owner, remove it from shared_with
-        compound.shared_with = [
-            user for user in compound.shared_with if user.id != current_user.id
-        ]
+    # Remove all shared access to this compound
+    db.query(models.shared_compounds).filter(models.shared_compounds.c.compound_id == compound_id).delete()
 
+    # Delete the compound itself
+    db.delete(compound)
     db.commit()
-    return {"message": "Compound deleted successfully!"}
+
+    return {"message": "Compound and shared access deleted successfully!"}
 
 # Share a Compound
 @app.post("/compounds/{compound_id}/share")
@@ -220,32 +217,37 @@ def share_compound(
     db: Session = Depends(get_db),
 ):
     # Ensure the compound belongs to the current user
-    compound = db.query(models.Compound).filter(models.Compound.id == compound_id).first()
-    if not compound:
-        raise HTTPException(status_code=404, detail="Compound not found.")
-
-    # Check if the target user already has this compound
-    existing_compound = (
+    compound = (
         db.query(models.Compound)
-        .filter(
-            models.Compound.owner_id == share_request.user_id,
-            models.Compound.smiles_string == compound.smiles_string,
-        )
+        .filter(models.Compound.id == compound_id, models.Compound.owner_id == current_user.id)
         .first()
     )
-    if existing_compound:
+    if not compound:
+        raise HTTPException(status_code=403, detail="You are not authorized to share this compound.")
+
+    # Check if the target user already has the compound
+    existing_share = db.query(models.shared_compounds).filter(
+        models.shared_compounds.c.compound_id == compound_id,
+        models.shared_compounds.c.user_id == share_request.user_id
+    ).first()
+
+    if existing_share:
         raise HTTPException(status_code=400, detail="User already has this compound.")
 
-    # Add the compound to the shared_with relationship
+    # Share the compound with the target user
     target_user = db.query(models.User).filter(models.User.id == share_request.user_id).first()
     if not target_user:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=404, detail="Target user not found.")
 
-    # Share the compound
-    compound.shared_with.append(target_user)
+    # Insert into shared_compounds table
+    db.execute(
+        models.shared_compounds.insert().values(compound_id=compound_id, user_id=share_request.user_id)
+    )
     db.commit()
 
     return {"message": "Compound shared successfully!"}
+
+
 
 
 # Return a list of users excluding the currently logged in user
