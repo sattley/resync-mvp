@@ -64,6 +64,13 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class CompoundCreate(BaseModel):
+    name: str
+    smiles_string: str
+
+    class Config:
+        orm_mode = True  # Allows serialization of SQLAlchemy models
+
 
 # --- 4. Routes ---
 
@@ -103,3 +110,33 @@ def login(user: LoginRequest, db: Session = Depends(get_db)):
 def get_user_compounds(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     compounds = db.query(models.Compound).filter(models.Compound.owner_id == current_user.id).all()
     return compounds
+
+# Save a Compound
+@app.post("/compounds", response_model=CompoundCreate)
+def save_compound(
+    compound: CompoundCreate,  # Use the Pydantic schema for validation
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # Check if the compound already exists for this user
+    existing_compound = (
+        db.query(models.Compound)
+        .filter(
+            models.Compound.owner_id == current_user.id,
+            models.Compound.smiles_string == compound.smiles_string,
+        )
+        .first()
+    )
+    if existing_compound:
+        raise HTTPException(status_code=400, detail="Compound already exists.")
+
+    # Create and save the new compound
+    new_compound = models.Compound(
+        name=compound.name,
+        smiles_string=compound.smiles_string,
+        owner_id=current_user.id,
+    )
+    db.add(new_compound)
+    db.commit()
+    db.refresh(new_compound)
+    return new_compound

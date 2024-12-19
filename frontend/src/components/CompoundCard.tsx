@@ -6,7 +6,7 @@ interface CompoundCardProps {
   smiles: string;
   onDelete?: (id: number) => void;
   onShare?: (id: number) => void;
-  onSave?: (id: number) => void;
+  onSave?: (id: number, name: string, smiles: string) => void;
 }
 
 const CompoundCard: React.FC<CompoundCardProps> = ({
@@ -38,7 +38,7 @@ const CompoundCard: React.FC<CompoundCardProps> = ({
         {onSave ? (
           <button
             className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            onClick={() => onSave(id)}
+            onClick={() => onSave(id, name, smiles)}
           >
             Save to Dashboard
           </button>

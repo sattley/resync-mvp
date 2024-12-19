@@ -11,6 +11,13 @@ export const fetchCompounds = async (token: string): Promise<Compound[]> => {
     },
   });
 
+  if (response.status === 401) {
+    // Token is invalid or expired
+    localStorage.removeItem("access_token"); // Clear token from storage
+    window.location.href = "/login"; // Redirect to login screen
+    throw new Error("Unauthorized. Redirecting to login.");
+  }
+
   if (!response.ok) {
     throw new Error("Failed to fetch compounds");
   }
@@ -38,4 +45,24 @@ export const fetchCompoundName = async (smiles: string): Promise<string> => {
     console.error("Error fetching compound name:", error);
     return "Name Not Found";
   }
+};
+
+export const saveCompound = async (
+  compound: { name: string; smiles_string: string },
+  token: string
+) => {
+  const response = await fetch("http://127.0.0.1:8000/compounds", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(compound),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to save compound");
+  }
+
+  return response.json();
 };

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Header from "./Header";
 import SearchInput from "./SearchInput";
 import CompoundCard from "./CompoundCard";
-import { fetchCompounds, fetchCompoundName } from "../api/compoundService";
+import { fetchCompounds, fetchCompoundName, saveCompound } from "../api/compoundService";
 
 interface Compound {
   id: number;
@@ -20,7 +20,8 @@ const Dashboard = () => {
     const loadCompounds = async () => {
       const token = localStorage.getItem("access_token");
       if (!token) {
-        setError("User not logged in");
+        setError("User not logged in. Redirecting to login.");
+        window.location.href = "/login"; // Redirect to login if no token
         return;
       }
 
@@ -127,18 +128,39 @@ const Dashboard = () => {
         />
 
         {searchResult && (
-          <div className="mb-6">
-            <h3 className="text-lg font-bold mb-2">Search Result:</h3>
+          <div className="mb-20">
+            <h3 className="text-lg font-bold mb-4">Search Result:</h3>
+            <div className="flex">
             <CompoundCard
               id={searchResult.id}
               name={searchResult.name}
               smiles={searchResult.smiles_string}
-              onSave={(id) => {
-                setCompounds((prev) => [...prev, searchResult]);
-                setSearchResult(null); // Clear search result after saving
-                alert("Compound added to your dashboard!");
+              onSave={async (id, name, smiles) => {
+                try {
+                  const token = localStorage.getItem("access_token");
+                  if (!token) {
+                    alert("User not logged in.");
+                    return;
+                  }
+              
+                  // Call saveCompound API
+                  const savedCompound = await saveCompound({ name, smiles_string: smiles }, token);
+              
+                  // Add saved compound to the state
+                  setCompounds((prev) => [...prev, savedCompound]);
+              
+                  // Clear search result after saving
+                  setSearchResult(null);
+                  setSearchQuery(""); // Clear the search input
+              
+                  alert("Compound successfully saved to your dashboard!");
+                } catch (error) {
+                  console.error("Error saving compound:", error);
+                  alert("Failed to save the compound. Please try again.");
+                }
               }}
             />
+            </div>
           </div>
         )}
 

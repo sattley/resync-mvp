@@ -10,8 +10,8 @@ const SearchInput: React.FC<SearchInputProps> = ({
   onSearch,
 }) => {
   return (
-    <div className="my-20">
-      <label className="block text-gray-700 font-bold mb-2">
+    <div className="mb-10">
+      <label className="text-lg block font-bold mb-2">
         Search for a Compound (SMILES):
       </label>
       <div className="flex space-x-4">
