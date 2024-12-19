@@ -17,21 +17,58 @@ ReSync Interview Challenge
 1. **Run the FastAPI server:**
    ```uvicorn main:app --reload```
 <br>
-1. **Access the API locally:**
-   Open your browser and go to:
-   <http://localhost:8000>
 <br>
-1. **View API Docs:**
-   To view FastAPI auto generated API docs, go to:
-   <http://localhost:8000/docs>
+
+# Frontend Setup
+
+**_Important:_** Before starting the frontend, ensure that the backend server is running. Start the Uvicorn server by following the steps in the Backend Setup section. The backend should be accessible at http://127.0.0.1:8000. The frontend relies on this server to function correctly.
+
+1. **Navigate to the frontend directory**:
+   ```cd frontend```
+<br>
+1. **Install dependencies:**
+   ```npm install```
+<br>
+1. **Start the Vite development server:**
+   ```npm run dev```
+<br>
+1. **View the app in a browser :**
+   Open your browser and go to:
+   <http://localhost:5173/>
 <br>
 <br>
 
 # Test Data
-### Users
+### Users to Login with
 
-    Username: newuser
-    Password: P@ssword123!UniqueTest
+    Username: user1
+    Password: U$er1-P@ssw0rd
+
+    Username: user2
+    Password: U$er2-P@ssw0rd
+
+    Username: user3
+    Password: U$er3-P@ssw0rd
+
+### SMILES strings
+
+    Name: oxidane
+    SMILES: O
+
+    Name: methanol
+    SMILES: CO
+
+    Name: Ethanol
+    SMILES: CCO
+
+    Name: Acetone
+    SMILES: CC(C)=O
+
+    Name: Benzene
+    SMILES: c1ccccc1
+
+    Name: Caffeine
+    SMILES: Cn1cnc2c1c(=O)n(c(=O)n2C)C
 
 
 

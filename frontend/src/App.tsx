@@ -10,7 +10,6 @@ import Dashboard from "./components/Dashboard";
 
 function App() {
   const token = localStorage.getItem("access_token");
-  console.log(token);
 
   return (
     <Router>

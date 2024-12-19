@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from auth import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from pydantic import BaseModel
 from datetime import timedelta
+from typing import List
+from typing import Optional
 
 # --- 1. App Initialization and Middleware ---
 
@@ -71,6 +73,17 @@ class CompoundCreate(BaseModel):
     class Config:
         orm_mode = True  # Allows serialization of SQLAlchemy models
 
+class CompoundResponse(BaseModel):
+    id: int
+    name: str
+    smiles_string: str
+
+    class Config:
+        orm_mode = True  # Allows serialization of SQLAlchemy models
+
+class ShareCompoundRequest(BaseModel):
+    user_id: int
+
 
 # --- 4. Routes ---
 
@@ -106,15 +119,42 @@ def login(user: LoginRequest, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 # Protected Route: Fetch User's Compounds
-@app.get("/compounds")
-def get_user_compounds(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    compounds = db.query(models.Compound).filter(models.Compound.owner_id == current_user.id).all()
-    return compounds
+@app.get("/compounds", response_model=List[CompoundResponse])
+def get_user_compounds(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    compounds = (
+        db.query(models.Compound)
+        .filter(
+            (models.Compound.owner_id == current_user.id) |
+            (models.Compound.shared_with.any(id=current_user.id))
+        )
+        .all()
+    )
+
+    # Add sharedBy field for shared compounds
+    response = []
+    for compound in compounds:
+        shared_by = None
+        if compound.owner_id is None:  # If the compound has no owner
+            shared_by_user = db.query(models.User).filter(models.User.id == compound.owner_id).first()
+            shared_by = shared_by_user.username if shared_by_user else None
+        response.append(
+            {
+                "id": compound.id,
+                "name": compound.name,
+                "smiles_string": compound.smiles_string,
+                "sharedBy": shared_by,
+            }
+        )
+    return response
+
 
 # Save a Compound
-@app.post("/compounds", response_model=CompoundCreate)
+@app.post("/compounds", response_model=CompoundResponse)
 def save_compound(
-    compound: CompoundCreate,  # Use the Pydantic schema for validation
+    compound: CompoundCreate,  # Use CompoundCreate for input validation
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -140,3 +180,79 @@ def save_compound(
     db.commit()
     db.refresh(new_compound)
     return new_compound
+
+# Delete a Compound
+@app.delete("/compounds/{compound_id}")
+def delete_compound(
+    compound_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # Fetch the compound to ensure it exists and belongs to the current user
+    compound = db.query(models.Compound).filter(models.Compound.id == compound_id).first()
+    if not compound:
+        raise HTTPException(status_code=404, detail="Compound not found.")
+
+    # Check if the user is the owner
+    if compound.owner_id == current_user.id:
+        # Check if the compound is shared
+        if compound.shared_with:
+            # Nullify the owner_id but keep the compound
+            compound.owner_id = None
+        else:
+            # If not shared, delete the compound
+            db.delete(compound)
+    else:
+        # If the user is not the owner, remove it from shared_with
+        compound.shared_with = [
+            user for user in compound.shared_with if user.id != current_user.id
+        ]
+
+    db.commit()
+    return {"message": "Compound deleted successfully!"}
+
+# Share a Compound
+@app.post("/compounds/{compound_id}/share")
+def share_compound(
+    compound_id: int,
+    share_request: ShareCompoundRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # Ensure the compound belongs to the current user
+    compound = db.query(models.Compound).filter(models.Compound.id == compound_id).first()
+    if not compound:
+        raise HTTPException(status_code=404, detail="Compound not found.")
+
+    # Check if the target user already has this compound
+    existing_compound = (
+        db.query(models.Compound)
+        .filter(
+            models.Compound.owner_id == share_request.user_id,
+            models.Compound.smiles_string == compound.smiles_string,
+        )
+        .first()
+    )
+    if existing_compound:
+        raise HTTPException(status_code=400, detail="User already has this compound.")
+
+    # Add the compound to the shared_with relationship
+    target_user = db.query(models.User).filter(models.User.id == share_request.user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # Share the compound
+    compound.shared_with.append(target_user)
+    db.commit()
+
+    return {"message": "Compound shared successfully!"}
+
+
+# Return a list of users excluding the currently logged in user
+@app.get("/users")
+def get_all_users(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Exclude the current user from the results
+    users = db.query(models.User).filter(models.User.id != current_user.id).all()
+    return [{"id": user.id, "username": user.username} for user in users]
+
+
